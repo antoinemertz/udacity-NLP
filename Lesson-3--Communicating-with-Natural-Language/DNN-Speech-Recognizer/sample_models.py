@@ -148,18 +148,21 @@ def final_model(input_dim, units, recur_layers, filters, kernel_size, conv_strid
                      padding=conv_border_mode,
                      activation='relu',
                      name='conv1d')(input_data)
+    bn_cnn = BatchNormalization(name='bn_cnn')(conv_1d)
     # add bidirectionnal layers with batch normalization and dropout for regularization
     for i in range(recur_layers):
         if (i == 0):
             bidir_rnn = Bidirectional(
                 GRU(units, activation='relu', return_sequences=True, implementation=2, name='bidir_rnn'+str(i)),
-        merge_mode='concat')(conv_1d)
+                merge_mode='concat')(bn_cnn)
+            bn_rnn = BatchNormalization(name='bn_rnn'+str(i))(bidir_rnn)
+            dropout_rnn = Dropout(rate=dropout_rate)(bn_rnn)
         else:
             bidir_rnn = Bidirectional(
                 GRU(units, activation='relu', return_sequences=True, implementation=2, name='bidir_rnn'+str(i)),
-        merge_mode='concat')(bidir_rnn)
-        bn_rnn = BatchNormalization(name='batchnorm_bidir_rnn'+str(i))(bidir_rnn)
-        dropout_rnn = Dropout(rate=dropout_rate)(bn_rnn)
+                merge_mode='concat')(bn_rnn)
+            bn_rnn = BatchNormalization(name='bn_rnn'+str(i))(bidir_rnn)
+            dropout_rnn = Dropout(rate=dropout_rate)(bn_rnn)
     # add dense layer
     time_dense = TimeDistributed(Dense(output_dim))(dropout_rnn)
     # TODO: Add softmax activation layer
